@@ -245,6 +245,18 @@ Matrix4x4 MakeRotateZMatrix(float radian) {
 }
 #pragma endregion
 
+//3次元アフィン変換行列
+Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Vector3& translate) {
+	Matrix4x4 scaleMatrix = MakeScaleMatrix(scale);
+	Matrix4x4 rotateXMatrix = MakeRotateXMatrix(rotate.x);
+	Matrix4x4 rotateYMatrix = MakeRotateYMatrix(rotate.y);
+	Matrix4x4 rotateZMatrix = MakeRotateZMatrix(rotate.z);
+	Matrix4x4 translateMatrix = MakeTranslateMatrix(translate);
+	return Multiply(Multiply(scaleMatrix, Multiply(Multiply(rotateXMatrix, rotateYMatrix),rotateZMatrix)), translateMatrix);
+}
+
+
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
@@ -268,11 +280,11 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓更新処理ここから
 		///
 
+		Vector3 scale{1.2f, 0.79f, -2.1f};
 		Vector3 roatate{0.4f, 1.43f, -0.8f};
-		Matrix4x4 rotateXMatrix = MakeRotateXMatrix(roatate.x);
-		Matrix4x4 rotateYMatrix = MakeRotateYMatrix(roatate.y);
-		Matrix4x4 rotateZMatrix = MakeRotateZMatrix(roatate.z);
-		Matrix4x4 rotateXYZMatrix = Multiply(rotateXMatrix,Multiply(rotateYMatrix, rotateZMatrix));
+		Vector3 translate{2.7f, -4.15f, 1.57f};
+		Matrix4x4 worldMatrix = MakeAffineMatrix(scale, roatate, translate);
+		
 
 		///
 		/// ↑更新処理ここまで
@@ -282,10 +294,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
-		MatrixScreenPrintf(0, 0, rotateXMatrix, "RotateXMatrix");
-		MatrixScreenPrintf(0, kMatrixRowHeight * 5, rotateYMatrix, "RotateYMatrix");
-		MatrixScreenPrintf(0, kMatrixRowHeight * 5 * 2, rotateZMatrix, "RotateZMatrix");
-		MatrixScreenPrintf(0, kMatrixRowHeight * 5 * 3, rotateXYZMatrix, "RotateXYZMatrix");
+		MatrixScreenPrintf(0, 0, worldMatrix, "WorldMatrix");
+		
 
 		///
 		/// ↑描画処理ここまで
