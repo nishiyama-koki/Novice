@@ -245,17 +245,68 @@ Matrix4x4 MakeRotateZMatrix(float radian) {
 }
 #pragma endregion
 
-//3次元アフィン変換行列
+// 3次元アフィン変換行列
 Matrix4x4 MakeAffineMatrix(const Vector3& scale, const Vector3& rotate, const Vector3& translate) {
 	Matrix4x4 scaleMatrix = MakeScaleMatrix(scale);
 	Matrix4x4 rotateXMatrix = MakeRotateXMatrix(rotate.x);
 	Matrix4x4 rotateYMatrix = MakeRotateYMatrix(rotate.y);
 	Matrix4x4 rotateZMatrix = MakeRotateZMatrix(rotate.z);
 	Matrix4x4 translateMatrix = MakeTranslateMatrix(translate);
-	return Multiply(Multiply(scaleMatrix, Multiply(Multiply(rotateXMatrix, rotateYMatrix),rotateZMatrix)), translateMatrix);
+	return Multiply(Multiply(scaleMatrix, Multiply(Multiply(rotateXMatrix, rotateYMatrix), rotateZMatrix)), translateMatrix);
 }
 
+Matrix4x4 MakePerspectiveFovMatrix(float fovRadians, float aspect, float nearClip, float farClip) {
+	Matrix4x4 result{}; 
+	float top = nearClip * tanf(fovRadians / 2.0f);
+	float bottom = -top;
+	float right = top * aspect;
+	float left = -right;
+	result.m[0][0] = (2.0f * nearClip) / (right - left);
+	result.m[1][1] = (2.0f * nearClip) / (top - bottom);
+	result.m[2][2] = farClip / (farClip - nearClip); 
+	result.m[2][3] = 1.0f;                           
+	result.m[3][2] = -(farClip * nearClip) / (farClip - nearClip);
+	result.m[3][3] = 0.0f;
+	return result;
+}
 
+// 透視投影行列
+Matrix4x4 MakePerspectiveMatrix(float left, float right, float top, float bottom, float nearClip, float farClip) {
+	Matrix4x4 result{};
+	result.m[0][0] = (2.0f * nearClip) / (right - left);
+	result.m[1][1] = (2.0f * nearClip) / (top - bottom);
+	result.m[2][2] = -(farClip + nearClip) / (farClip - nearClip);
+	result.m[2][3] = -(2.0f * farClip * nearClip) / (farClip - nearClip);
+	result.m[3][2] = -1.0f;
+	return result;
+}
+
+// 正射影行列
+Matrix4x4 MakeOrthographicMatrix(float left, float top, float right, float bottom, float nearClip, float farClip) {
+	Matrix4x4 result{};
+	result.m[0][0] = 2.0f / (right - left);
+	result.m[1][1] = 2.0f / (top - bottom);
+	result.m[2][2] = 1.0f / (farClip - nearClip);
+	result.m[3][0] = (left + right) / (left - right);
+	result.m[3][1] = (top + bottom) / (bottom - top);
+	result.m[3][2] = nearClip / (nearClip - farClip);
+	result.m[3][3] = 1.0f;
+	return result;
+}
+
+// ビューポート変換行列
+Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f) {
+	Matrix4x4 result = MakeIdentityMatrix4x4();
+	result.m[0][0] = width / 2.0f;
+	result.m[1][1] = -height / 2.0f;     
+	result.m[2][2] = maxDepth - minDepth;
+	result.m[3][0] = left +( width / 2.0f);
+	result.m[3][1] = top + (height / 2.0f);
+	result.m[3][2] = minDepth; 
+	result.m[3][3] = 1.0f; 
+
+	return result;
+}
 
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
@@ -280,11 +331,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓更新処理ここから
 		///
 
-		Vector3 scale{1.2f, 0.79f, -2.1f};
-		Vector3 roatate{0.4f, 1.43f, -0.8f};
-		Vector3 translate{2.7f, -4.15f, 1.57f};
-		Matrix4x4 worldMatrix = MakeAffineMatrix(scale, roatate, translate);
-		
+		Matrix4x4 orthographicMatrix = MakeOrthographicMatrix(-160.0f, 160.0f, 200.0f, 300.0f, 0.0f, 1000.0f);
+		Matrix4x4 perspectiveFovMatrix = MakePerspectiveFovMatrix(0.63f, 1.33f, 0.1f, 1000.0f);
+		Matrix4x4 viewportMatrix = MakeViewportMatrix(100.0f, 200.0f, 600.0f, 300.0f, 0.0f, 1.0f);
 
 		///
 		/// ↑更新処理ここまで
@@ -294,8 +343,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
-		MatrixScreenPrintf(0, 0, worldMatrix, "WorldMatrix");
-		
+		MatrixScreenPrintf(0, 0, orthographicMatrix, "OrthographicMatrix");
+		MatrixScreenPrintf(0, kRowHeight * 5, perspectiveFovMatrix, "PerspectiveFovMatrix");
+		MatrixScreenPrintf(0, kRowHeight * 10, viewportMatrix, "ViewportMatrix");
 
 		///
 		/// ↑描画処理ここまで
