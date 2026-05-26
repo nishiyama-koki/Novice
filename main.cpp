@@ -18,7 +18,7 @@ void DrawGrid(const Matrix4x4& viewPlojectionMatrix4x4, const Matrix4x4& viewPor
 		Vector3 end = Transform({x, 0.0f, kGridHalfWidth}, viewPlojectionMatrix4x4);
 		start = Transform(start, viewPortMatrix4x4);
 		end = Transform(end, viewPortMatrix4x4);
-		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), RED);
+		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), 0xFFFFFF77);
 	}
 	// 左から右への線を順々にひいていく
 	for (uint32_t zIndex = 0; zIndex <= kSubdivision; ++zIndex) {
@@ -27,11 +27,9 @@ void DrawGrid(const Matrix4x4& viewPlojectionMatrix4x4, const Matrix4x4& viewPor
 		Vector3 end = Transform({kGridHalfWidth, 0.0f, z}, viewPlojectionMatrix4x4);
 		start = Transform(start, viewPortMatrix4x4);
 		end = Transform(end, viewPortMatrix4x4);
-		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), RED);
+		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), 0xFFFFFF77);
 	}
-}
-
-// Windowsアプリでのエントリーポイント(main関数)
+} // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// ライブラリの初期化
@@ -43,12 +41,18 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	Vector3 cameraTranslate{0.0f, 1.9f, -6.49f};
 	Vector3 cameraRotate{0.26f, 0.0f, 0.0f};
-	Segment segment{
-	    {-2.0f, -1.0f, 0.0f},
-        {3.0f,  2.0f,  2.0f}
+
+	Sphere sphere1{
+	    {0.0f, 0.0f, 0.0f},
+        0.8f
+    };
+	Sphere sphere2{
+	    {1.6f, 0.0f, 0.0f},
+        0.4f
     };
 
-	Vector3 point{-1.0f, 0.6f, 0.6f};
+	uint32_t sphere1Color = WHITE;
+	uint32_t sphere2Color = WHITE;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -62,6 +66,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		///
 		/// ↓更新処理ここから
 		///
+
+		float distance = Length(Subtract(sphere2.center, sphere1.center));
+
+		if (distance < sphere1.radius + sphere2.radius) {
+			Novice::ScreenPrintf(0, 0, "Hit");
+			sphere1Color = RED;
+		} else {
+			Novice::ScreenPrintf(0, 0, "Not Hit");
+			sphere1Color = WHITE;
+		};
+
 		ImGui::Begin("Window");
 
 		if (ImGui::CollapsingHeader("Camera")) {
@@ -69,27 +84,23 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::DragFloat3("Camera Rotate", &cameraRotate.x, 0.01f);
 		}
 
-		if (ImGui::CollapsingHeader("Segment & Point")) {
-			ImGui::DragFloat3("Segment Origin", &segment.origin.x, 0.01f);
-			ImGui::DragFloat3("Segment Diff", &segment.diff.x, 0.01f);
-			ImGui::DragFloat3("Point", &point.x, 0.01f);
+		if (ImGui::CollapsingHeader("Sphere1")) {
+			ImGui::DragFloat3("Sphere1 Center", &sphere1.center.x, 0.01f);
+			ImGui::DragFloat("Sphere1 Radius", &sphere1.radius, 0.01f, 0.01f, 10.0f);
 		}
 
-		Vector3 project = Project(Subtract(point, segment.origin), segment.diff);
-		Vector3 closestPoint = ClosestPoint(point, segment);
-		Sphere pointSphere{point, 0.01f};
-		Sphere closestPointSphere{closestPoint, 0.01f};
-
-		ImGui::InputFloat3("Project", &project.x, "%.3f", ImGuiInputTextFlags_ReadOnly);
+		if (ImGui::CollapsingHeader("Sphere2")) {
+			ImGui::DragFloat3("Sphere2 Center", &sphere2.center.x, 0.01f);
+			ImGui::DragFloat("Sphere2 Radius", &sphere2.radius, 0.01f, 0.01f, 10.0f);
+		}
 
 		ImGui::End();
+
 		Matrix4x4 cameraMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, cameraRotate, cameraTranslate);
 		Matrix4x4 viewMatrix = Inverse(cameraMatrix);
 		Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, 1280.0f / 720.0f, 0.1f, 100.0f);
 		Matrix4x4 viewProjectionMatrix = Multiply(viewMatrix, projectionMatrix);
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f);
-		Vector3 start = Transform(Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
-		Vector3 end = Transform(Transform(Add(segment.origin, segment.diff), viewProjectionMatrix), viewportMatrix);
 
 		///
 		/// ↑更新処理ここまで
@@ -99,15 +110,9 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
-		// グリッドの描画
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
-
-		// 線分の描画
-		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), WHITE);
-
-		// 点と最近傍点の描画
-		DrawSphere(pointSphere, viewProjectionMatrix, viewportMatrix,0xFF0000FF);
-		DrawSphere(closestPointSphere, viewProjectionMatrix, viewportMatrix,0x000000FF);
+		DrawSphere(sphere2, viewProjectionMatrix, viewportMatrix, sphere2Color);
+		DrawSphere(sphere1, viewProjectionMatrix, viewportMatrix, sphere1Color);
 
 		///
 		/// ↑描画処理ここまで
