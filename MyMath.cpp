@@ -300,3 +300,36 @@ Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, f
 	return result;
 }
 #pragma endregion
+
+// 正射影ベクトル
+Vector3 Project(const Vector3& v1, const Vector3& v2) {
+	Vector3 result{};
+	float v2LengthSq = v2.x * v2.x + v2.y * v2.y + v2.z * v2.z;
+	if (v2LengthSq == 0.0f) {
+		return result;
+	}
+	float t = Dot(v1, v2) / v2LengthSq;
+	result = Multiply(v2, t);
+	return result;
+}
+
+// 線分上の最近傍点
+Vector3 ClosestPoint(const Vector3& point, const Segment& segment) {
+	Vector3 result{};
+	Vector3 v = Subtract(point, segment.origin);
+	float diffLengthSq = segment.diff.x * segment.diff.x + segment.diff.y * segment.diff.y + segment.diff.z * segment.diff.z;
+	if (diffLengthSq == 0.0f) {
+		return segment.origin;
+	}
+	float t = Dot(v, segment.diff) / diffLengthSq;
+	// クランプ処理
+	if (t < 0.0f) {
+		t = 0.0f;
+	}
+	if (t > 1.0f) {
+		t = 1.0f;
+	}
+
+	result = Add(segment.origin, Multiply(segment.diff, t));
+	return result;
+}

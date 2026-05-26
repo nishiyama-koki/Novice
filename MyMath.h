@@ -16,6 +16,21 @@ struct Matrix4x4 {
 	float m[4][4];
 };
 
+struct Line {
+	Vector3 origin;
+	Vector3 diff;
+};
+
+struct Ray {
+	Vector3 origin;
+	Vector3 diff;
+};
+
+struct Segment {
+	Vector3 origin;
+	Vector3 diff;
+};
+
 // Vector3関数群の宣言
 Vector3 Add(const Vector3& v1, const Vector3& v2);
 Vector3 Subtract(const Vector3& v1, const Vector3& v2);
@@ -47,3 +62,7 @@ Matrix4x4 MakePerspectiveFovMatrix(float fovRadians, float aspect, float nearCli
 Matrix4x4 MakePerspectiveMatrix(float left, float right, float top, float bottom, float nearClip, float farClip);
 Matrix4x4 MakeOrthographicMatrix(float left, float top, float right, float bottom, float nearClip, float farClip);
 Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, float minDepth = 0.0f, float maxDepth = 1.0f);
+
+//
+Vector3 Project(const Vector3& v1,const Vector3& v2);
+Vector3 ClosestPoint(const Vector3& point,const Segment& segment);

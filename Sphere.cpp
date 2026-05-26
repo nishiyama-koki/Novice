@@ -2,7 +2,7 @@
 #include <Novice.h>
 #include <cmath>
 
-void DrawSphere(const Sphere& sphere, const Matrix4x4& viewPlojectionMatrix, const Matrix4x4& viewPortMatrix) {
+void DrawSphere(const Sphere& sphere, const Matrix4x4& viewPlojectionMatrix, const Matrix4x4& viewPortMatrix,uint32_t color) {
 	const uint32_t kSubdivision = 20; // 分割数
 	const float kPi = 3.1415926535f;
 	const float kLonEvery = (2.0f * kPi) / float(kSubdivision); // 経度分割1つ分の角度
@@ -38,8 +38,8 @@ void DrawSphere(const Sphere& sphere, const Matrix4x4& viewPlojectionMatrix, con
 			Vector3 screenC = Transform(Transform(c, viewPlojectionMatrix), viewPortMatrix);
 
 			// ab,bcで線を引く
-			Novice::DrawLine(int(screenA.x), int(screenA.y), int(screenB.x), int(screenB.y), WHITE);
-			Novice::DrawLine(int(screenA.x), int(screenA.y), int(screenC.x), int(screenC.y), WHITE);
+			Novice::DrawLine(int(screenA.x), int(screenA.y), int(screenB.x), int(screenB.y), color);
+			Novice::DrawLine(int(screenA.x), int(screenA.y), int(screenC.x), int(screenC.y), color);
 		}
 	}
 }
