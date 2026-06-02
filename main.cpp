@@ -67,9 +67,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓更新処理ここから
 		///
 
-		float distance = Length(Subtract(sphere2.center, sphere1.center));
-
-		if (distance < sphere1.radius + sphere2.radius) {
+		if (IsCollision(sphere1, sphere2)) {
 			Novice::ScreenPrintf(0, 0, "Hit");
 			sphere1Color = RED;
 		} else {

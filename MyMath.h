@@ -1,5 +1,6 @@
 #pragma once
 
+
 // 構造体の定義
 struct Vector2 {
 	float x;
@@ -66,3 +67,6 @@ Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, f
 //
 Vector3 Project(const Vector3& v1,const Vector3& v2);
 Vector3 ClosestPoint(const Vector3& point,const Segment& segment);
+
+
+

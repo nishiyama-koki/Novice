@@ -1,4 +1,5 @@
 #include "MyMath.h"
+#include "Sphere.h"
 #include <Novice.h>
 #include <cmath>
 
