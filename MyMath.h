@@ -32,6 +32,16 @@ struct Segment {
 	Vector3 diff;
 };
 
+struct Plane {
+	Vector3 normal;
+	float distance;
+};
+
+struct Sphere {
+	Vector3 center; // 中心点
+	float radius;   // 半径
+};
+
 // Vector3関数群の宣言
 Vector3 Add(const Vector3& v1, const Vector3& v2);
 Vector3 Subtract(const Vector3& v1, const Vector3& v2);
@@ -68,5 +78,5 @@ Matrix4x4 MakeViewportMatrix(float left, float top, float width, float height, f
 Vector3 Project(const Vector3& v1,const Vector3& v2);
 Vector3 ClosestPoint(const Vector3& point,const Segment& segment);
 
-
+bool isSphereToPlaneCollision(const Sphere& s, const Plane& p);
 

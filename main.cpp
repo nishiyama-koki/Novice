@@ -29,7 +29,38 @@ void DrawGrid(const Matrix4x4& viewPlojectionMatrix4x4, const Matrix4x4& viewPor
 		end = Transform(end, viewPortMatrix4x4);
 		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), 0xFFFFFF77);
 	}
-} // Windowsアプリでのエントリーポイント(main関数)
+} 
+
+
+Vector3 Perpendicular(const Vector3& v) {
+	if (v.x != 0.0f || v.y != 0.0f) {
+		return {-v.y, v.x, 0.0f};
+	}
+	return {0.0f, -v.z, v.y};
+}
+
+void DrawPlane(const Plane& plane, const Matrix4x4& viewPlojectionMatrix, const Matrix4x4& viewPortMatrix, uint32_t color) {
+	Vector3 center = Multiply(plane.normal, plane.distance);
+	Vector3 perpendiculars[4];
+	perpendiculars[0] = Normalize(Perpendicular(plane.normal));
+	perpendiculars[1] = {-perpendiculars[0].x, -perpendiculars[0].y, -perpendiculars[0].z};
+	perpendiculars[2] = Cross(plane.normal, perpendiculars[0]);
+	perpendiculars[3] = {-perpendiculars[2].x, -perpendiculars[2].y, -perpendiculars[2].z};
+	
+	Vector3 points[4];
+	for (int32_t index = 0; index < 4; ++index) {
+		Vector3 extend=Multiply(perpendiculars[index], 2.0f);
+		Vector3 point = Add(center, extend);
+		points[index] = Transform(Transform(point, viewPlojectionMatrix), viewPortMatrix);
+	}
+	Novice::DrawLine(int(points[0].x), int(points[0].y), int(points[2].x), int(points[2].y), color);
+	Novice::DrawLine(int(points[2].x), int(points[2].y), int(points[1].x), int(points[1].y), color);
+	Novice::DrawLine(int(points[1].x), int(points[1].y), int(points[3].x), int(points[3].y), color);
+	Novice::DrawLine(int(points[3].x), int(points[3].y), int(points[0].x), int(points[0].y), color);
+}
+
+
+// Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 	// ライブラリの初期化
@@ -46,13 +77,13 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	    {0.0f, 0.0f, 0.0f},
         0.8f
     };
-	Sphere sphere2{
-	    {1.6f, 0.0f, 0.0f},
-        0.4f
+	Plane plane{
+	    {0.0f, 1.0f, 0.0f},
+        0.0f
     };
 
 	uint32_t sphere1Color = WHITE;
-	uint32_t sphere2Color = WHITE;
+	
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -67,7 +98,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓更新処理ここから
 		///
 
-		if (IsCollision(sphere1, sphere2)) {
+		if (isSphereToPlaneCollision(sphere1, plane)) {
 			Novice::ScreenPrintf(0, 0, "Hit");
 			sphere1Color = RED;
 		} else {
@@ -87,10 +118,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::DragFloat("Sphere1 Radius", &sphere1.radius, 0.01f, 0.01f, 10.0f);
 		}
 
-		if (ImGui::CollapsingHeader("Sphere2")) {
-			ImGui::DragFloat3("Sphere2 Center", &sphere2.center.x, 0.01f);
-			ImGui::DragFloat("Sphere2 Radius", &sphere2.radius, 0.01f, 0.01f, 10.0f);
-		}
+		ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f);
+		plane.normal = Normalize(plane.normal);
 
 		ImGui::End();
 
@@ -99,6 +128,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, 1280.0f / 720.0f, 0.1f, 100.0f);
 		Matrix4x4 viewProjectionMatrix = Multiply(viewMatrix, projectionMatrix);
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f);
+
+		
 
 		///
 		/// ↑更新処理ここまで
@@ -109,8 +140,8 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		///
 
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
-		DrawSphere(sphere2, viewProjectionMatrix, viewportMatrix, sphere2Color);
 		DrawSphere(sphere1, viewProjectionMatrix, viewportMatrix, sphere1Color);
+		DrawPlane(plane, viewProjectionMatrix, viewportMatrix, WHITE);
 
 		///
 		/// ↑描画処理ここまで

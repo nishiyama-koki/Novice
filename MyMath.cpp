@@ -334,3 +334,12 @@ Vector3 ClosestPoint(const Vector3& point, const Segment& segment) {
 	result = Add(segment.origin, Multiply(segment.diff, t));
 	return result;
 }
+
+
+bool isSphereToPlaneCollision(const Sphere& s, const Plane& p) {
+	float distance = Dot(p.normal, s.center) - p.distance;
+	if (fabsf(distance) < s.radius) {
+		return true;
+	}
+	return false;
+}
