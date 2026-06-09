@@ -126,6 +126,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		ImGui::DragFloat3("Plane.Normal", &plane.normal.x, 0.01f);
 		plane.normal = Normalize(plane.normal);
+		ImGui::DragFloat("Plane.Distance", &plane.distance, 0.01f);
 
 		ImGui::End();
 
