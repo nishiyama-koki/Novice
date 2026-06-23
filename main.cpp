@@ -30,8 +30,8 @@ void DrawGrid(const Matrix4x4& viewPlojectionMatrix4x4, const Matrix4x4& viewPor
 		end = Transform(end, viewPortMatrix4x4);
 		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), 0xFFFFFF77);
 	}
-} // AABBの描画
-
+}
+// AABBの描画
 void DrawAABB(const AABB& aabb, Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
 	Vector3 vertices[8];
 	vertices[0] = {aabb.min.x, aabb.min.y, aabb.min.z};
@@ -65,24 +65,61 @@ void DrawAABB(const AABB& aabb, Matrix4x4& viewProjectionMatrix, const Matrix4x4
 	Novice::DrawLine((int)screenVertices[3].x, (int)screenVertices[3].y, (int)screenVertices[7].x, (int)screenVertices[7].y, color);
 	Novice::DrawLine((int)screenVertices[0].x, (int)screenVertices[0].y, (int)screenVertices[4].x, (int)screenVertices[4].y, color);
 }
-
 bool IsCollision(const AABB& aabb, const Segment& segment) {
-	// min max を求める
-	Vector3 min = {(aabb.min.x - segment.origin.x) / segment.diff.x, (aabb.min.y - segment.origin.y) / segment.diff.y, (aabb.min.z - segment.origin.z) / segment.diff.z};
+	// 0除算を避けるための小さな値
+	const float kEpsilon = 0.00001f;
 
-	Vector3 max = {(aabb.max.x - segment.origin.x) / segment.diff.x, (aabb.max.y - segment.origin.y) / segment.diff.y, (aabb.max.z - segment.origin.z) / segment.diff.z};
+	// 各軸のtのmin/maxを入れる変数（std::min/maxを隠蔽しない名前に変更）
+	Vector3 tMinXYZ{};
+	Vector3 tMaxXYZ{};
 
-	// near far を求める
-	Vector3 near_ = {min(min.x, max.x), min(min.y, max.y), min(min.z, max.z)};
-	Vector3 far_ = {max(min.x, max.x), max(min.y, max.y), max(min.z, max.z)};
+	// X軸の計算（0除算対策付き）
+	if (std::abs(segment.diff.x) < kEpsilon) {
+		if (segment.origin.x < aabb.min.x || segment.origin.x > aabb.max.x) {
+			return false;
+		}
+		tMinXYZ.x = -std::numeric_limits<float>::infinity();
+		tMaxXYZ.x = std::numeric_limits<float>::infinity();
+	} else {
+		tMinXYZ.x = (aabb.min.x - segment.origin.x) / segment.diff.x;
+		tMaxXYZ.x = (aabb.max.x - segment.origin.x) / segment.diff.x;
+	}
+
+	// Y軸の計算（0除算対策付き）
+	if (std::abs(segment.diff.y) < kEpsilon) {
+		if (segment.origin.y < aabb.min.y || segment.origin.y > aabb.max.y) {
+			return false;
+		}
+		tMinXYZ.y = -std::numeric_limits<float>::infinity();
+		tMaxXYZ.y = std::numeric_limits<float>::infinity();
+	} else {
+		tMinXYZ.y = (aabb.min.y - segment.origin.y) / segment.diff.y;
+		tMaxXYZ.y = (aabb.max.y - segment.origin.y) / segment.diff.y;
+	}
+
+	// Z軸の計算（0除算対策付き）
+	if (std::abs(segment.diff.z) < kEpsilon) {
+		if (segment.origin.z < aabb.min.z || segment.origin.z > aabb.max.z) {
+			return false;
+		}
+		tMinXYZ.z = -std::numeric_limits<float>::infinity();
+		tMaxXYZ.z = std::numeric_limits<float>::infinity();
+	} else {
+		tMinXYZ.z = (aabb.min.z - segment.origin.z) / segment.diff.z;
+		tMaxXYZ.z = (aabb.max.z - segment.origin.z) / segment.diff.z; // aabb.max.x になっていた潜在バグも修正
+	}
+	// near far を求める (括弧で囲むことで Windowsマクロ の展開を強制防止)
+	Vector3 near_ = {(std::min)(tMinXYZ.x, tMaxXYZ.x), (std::min)(tMinXYZ.y, tMaxXYZ.y), (std::min)(tMinXYZ.z, tMaxXYZ.z)};
+	Vector3 far_ = {(std::max)(tMinXYZ.x, tMaxXYZ.x), (std::max)(tMinXYZ.y, tMaxXYZ.y), (std::max)(tMinXYZ.z, tMaxXYZ.z)};
 
 	// AABBとの衝突点(貫通点)の t が小さい方
-	float tmin = max(max(near_.x, near_.y), near_.z);
+	float tmin = (std::max)((std::max)(near_.x, near_.y), near_.z);
 
 	// AABBとの衝突点(貫通点)の t が大きい方
-	float tmax = min(min(far_.x, far_.y), far_.z);
+	float tmax = (std::min)((std::min)(far_.x, far_.y), far_.z);
 
-	if (tmin <= tmax) {
+	// 線分としての範囲条件（tmin <= tmax かつ、線分の範囲 0.0f 〜 1.0f と重複しているか）
+	if (tmin <= tmax && tmin <= 1.0f && tmax >= 0.0f) {
 		return true;
 	} else {
 		return false;
