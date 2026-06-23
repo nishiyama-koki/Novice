@@ -42,6 +42,11 @@ struct Sphere {
 	float radius;   // 半径
 };
 
+struct AABB {
+	Vector3 min;
+	Vector3 max;
+};
+
 // Vector3関数群の宣言
 Vector3 Add(const Vector3& v1, const Vector3& v2);
 Vector3 Subtract(const Vector3& v1, const Vector3& v2);
