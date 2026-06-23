@@ -47,6 +47,10 @@ struct AABB {
 	Vector3 max;
 };
 
+struct Triangle {
+	Vector3 vertices[3];
+};
+
 // Vector3関数群の宣言
 Vector3 Add(const Vector3& v1, const Vector3& v2);
 Vector3 Subtract(const Vector3& v1, const Vector3& v2);
