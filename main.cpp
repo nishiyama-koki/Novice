@@ -106,8 +106,9 @@ bool IsCollision(const AABB& aabb, const Segment& segment) {
 		tMaxXYZ.z = std::numeric_limits<float>::infinity();
 	} else {
 		tMinXYZ.z = (aabb.min.z - segment.origin.z) / segment.diff.z;
-		tMaxXYZ.z = (aabb.max.z - segment.origin.z) / segment.diff.z; // aabb.max.x になっていた潜在バグも修正
+		tMaxXYZ.z = (aabb.max.z - segment.origin.z) / segment.diff.z;
 	}
+
 	// near far を求める (括弧で囲むことで Windowsマクロ の展開を強制防止)
 	Vector3 near_ = {(std::min)(tMinXYZ.x, tMaxXYZ.x), (std::min)(tMinXYZ.y, tMaxXYZ.y), (std::min)(tMinXYZ.z, tMaxXYZ.z)};
 	Vector3 far_ = {(std::max)(tMinXYZ.x, tMaxXYZ.x), (std::max)(tMinXYZ.y, tMaxXYZ.y), (std::max)(tMinXYZ.z, tMaxXYZ.z)};
@@ -125,7 +126,6 @@ bool IsCollision(const AABB& aabb, const Segment& segment) {
 		return false;
 	}
 }
-
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ライブラリの初期化
