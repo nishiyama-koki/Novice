@@ -173,12 +173,13 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	char preKeys[256] = {0};
 	Vector3 cameraTranslate{0.0f, 1.9f, -6.49f};
 	Vector3 cameraRotate{0.26f, 0.0f, 0.0f};
-	Vector3 controlPoints[3] = {
-	    {0.0f, 0.0f, 0.0f},
-        {1.0f, 1.0f, 0.0f},
-        {2.0f, 0.0f, 0.0f}
-    };
-	uint32_t bezierColor = WHITE;
+
+	Vector3 shoulderTranslate{0.0f, 1.0f, 0.0f};
+	Vector3 shoulderRotate{0.0f, 0.0f, 0.0f};
+	Vector3 elbowTranslate{0.0f, -1.0f, 0.0f};
+	Vector3 elbowRotate{0.0f, 0.0f, 0.0f};
+	Vector3 handTranslate{0.0f, -1.0f, 0.0f};
+	Vector3 handRotate{0.0f, 0.0f, 0.0f};
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -200,11 +201,19 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::DragFloat3("Camera Rotate", &cameraRotate.x, 0.01f);
 		}
 
+		if (ImGui::CollapsingHeader("Shoulder (Parent)")) {
+			ImGui::DragFloat3("Shoulder Translate", &shoulderTranslate.x, 0.01f);
+			ImGui::DragFloat3("Shoulder Rotate", &shoulderRotate.x, 0.01f);
+		}
 
-		if (ImGui::CollapsingHeader("Bezier Control Points")) {
-			ImGui::DragFloat3("ControlPoint 0", &controlPoints[0].x, 0.01f);
-			ImGui::DragFloat3("ControlPoint 1", &controlPoints[1].x, 0.01f);
-			ImGui::DragFloat3("ControlPoint 2", &controlPoints[2].x, 0.01f);
+		if (ImGui::CollapsingHeader("Elbow (Child)")) {
+			ImGui::DragFloat3("Elbow Translate", &elbowTranslate.x, 0.01f);
+			ImGui::DragFloat3("Elbow Rotate", &elbowRotate.x, 0.01f);
+		}
+
+		if (ImGui::CollapsingHeader("Hand (Grandchild)")) {
+			ImGui::DragFloat3("Hand Translate", &handTranslate.x, 0.01f);
+			ImGui::DragFloat3("Hand Rotate", &handRotate.x, 0.01f);
 		}
 
 		ImGui::End();
@@ -213,11 +222,17 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, 1280.0f / 720.0f, 0.1f, 100.0f);
 		Matrix4x4 viewProjectionMatrix = Multiply(viewMatrix, projectionMatrix);
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f);
-
-		Vector3 screenControlPoints[3];
-		for (int i = 0; i < 3; ++i) {
-			screenControlPoints[i] = Transform(Transform(controlPoints[i], viewProjectionMatrix), viewportMatrix);
-		}
+		Matrix4x4 shoulderWorldMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, shoulderRotate, shoulderTranslate);
+		Matrix4x4 elbowLocalMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, elbowRotate, elbowTranslate);
+		Matrix4x4 elbowWorldMatrix = Multiply(elbowLocalMatrix, shoulderWorldMatrix);
+		Matrix4x4 handLocalMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, handRotate, handTranslate);
+		Matrix4x4 handWorldMatrix = Multiply(handLocalMatrix, elbowWorldMatrix);
+		Vector3 shoulderPos = {shoulderWorldMatrix.m[3][0], shoulderWorldMatrix.m[3][1], shoulderWorldMatrix.m[3][2]};
+		Vector3 elbowPos = {elbowWorldMatrix.m[3][0], elbowWorldMatrix.m[3][1], elbowWorldMatrix.m[3][2]};
+		Vector3 handPos = {handWorldMatrix.m[3][0], handWorldMatrix.m[3][1], handWorldMatrix.m[3][2]};
+		Vector3 screenShoulder = Transform(Transform(shoulderPos, viewProjectionMatrix), viewportMatrix);
+		Vector3 screenElbow = Transform(Transform(elbowPos, viewProjectionMatrix), viewportMatrix);
+		Vector3 screenHand = Transform(Transform(handPos, viewProjectionMatrix), viewportMatrix);
 
 		///
 		/// ↑更新処理ここまで
@@ -227,11 +242,14 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
-		DrawBezier(controlPoints[0], controlPoints[1], controlPoints[2], viewProjectionMatrix, viewportMatrix, bezierColor);
-		for (int i = 0; i < 3; ++i) {
-			Novice::DrawEllipse(int(screenControlPoints[i].x), int(screenControlPoints[i].y), 8, 8, 0.0f, BLACK, kFillModeSolid);
-		}
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
+
+
+		Novice::DrawLine(int(screenShoulder.x), int(screenShoulder.y), int(screenElbow.x), int(screenElbow.y), WHITE);
+		Novice::DrawLine(int(screenElbow.x), int(screenElbow.y), int(screenHand.x), int(screenHand.y), WHITE);
+		Novice::DrawEllipse(int(screenShoulder.x), int(screenShoulder.y), 12, 12, 0.0f, RED, kFillModeSolid);
+		Novice::DrawEllipse(int(screenElbow.x), int(screenElbow.y), 10, 10, 0.0f, GREEN, kFillModeSolid);
+		Novice::DrawEllipse(int(screenHand.x), int(screenHand.y), 8, 8, 0.0f, BLUE, kFillModeSolid);
 
 		///
 		/// ↑描画処理ここまで
