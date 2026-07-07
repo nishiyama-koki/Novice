@@ -31,6 +31,7 @@ void DrawGrid(const Matrix4x4& viewPlojectionMatrix4x4, const Matrix4x4& viewPor
 		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), 0xFFFFFF77);
 	}
 }
+
 // AABBの描画
 void DrawAABB(const AABB& aabb, Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
 	Vector3 vertices[8];
@@ -65,6 +66,7 @@ void DrawAABB(const AABB& aabb, Matrix4x4& viewProjectionMatrix, const Matrix4x4
 	Novice::DrawLine((int)screenVertices[3].x, (int)screenVertices[3].y, (int)screenVertices[7].x, (int)screenVertices[7].y, color);
 	Novice::DrawLine((int)screenVertices[0].x, (int)screenVertices[0].y, (int)screenVertices[4].x, (int)screenVertices[4].y, color);
 }
+
 bool IsCollision(const AABB& aabb, const Segment& segment) {
 	// 0除算を避けるための小さな値
 	const float kEpsilon = 0.00001f;
@@ -126,6 +128,42 @@ bool IsCollision(const AABB& aabb, const Segment& segment) {
 		return false;
 	}
 }
+
+Vector3 Lerp(const Vector3& v1, const Vector3& v2, float t) {
+	Vector3 result;
+	result.x = v1.x + t * (v2.x - v1.x);
+	result.y = v1.y + t * (v2.y - v1.y);
+	result.z = v1.z + t * (v2.z - v1.z);
+	return result;
+}
+
+void DrawBezier(const Vector3& controlPoint0, const Vector3& controlPoint1, const Vector3& controlPoint2, const Matrix4x4& viewProjectionMatrix, const Matrix4x4& viewportMatrix, uint32_t color) {
+	const int kSubdivision = 32;
+
+	// 最初の点を計算しておく
+	Vector3 previousPoint = controlPoint0;
+
+	for (int i = 1; i <= kSubdivision; ++i) {
+		// 現在のt（0.0 〜 1.0）
+		float t = (float)i / (float)kSubdivision;
+
+		// 2段階のLerpでベジェ曲線の点を求める
+		Vector3 p0p1 = Lerp(controlPoint0, controlPoint1, t);
+		Vector3 p1p2 = Lerp(controlPoint1, controlPoint2, t);
+		Vector3 currentPoint = Lerp(p0p1, p1p2, t);
+
+		// スクリーン座標への変換処理
+		Vector3 startScreen = Transform(Transform(previousPoint, viewProjectionMatrix), viewportMatrix);
+		Vector3 endScreen = Transform(Transform(currentPoint, viewProjectionMatrix), viewportMatrix);
+
+		// 線を描画
+		Novice::DrawLine((int)startScreen.x, (int)startScreen.y, (int)endScreen.x, (int)endScreen.y, color);
+
+		// 次のループのために現在の点を保存
+		previousPoint = currentPoint;
+	}
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ライブラリの初期化
@@ -135,16 +173,12 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	char preKeys[256] = {0};
 	Vector3 cameraTranslate{0.0f, 1.9f, -6.49f};
 	Vector3 cameraRotate{0.26f, 0.0f, 0.0f};
-	AABB aabb1 = {
-	    .min{-0.5f, -0.5f, -0.5f},
-	    .max{0.0f,  0.0f,  0.0f },
-	};
-	uint32_t aabb1Color = WHITE;
-	Segment segment{
-	    {0.0f, 2.0f,  0.0f},
-        {0.0f, -4.0f, 0.0f}
+	Vector3 controlPoints[3] = {
+	    {0.0f, 0.0f, 0.0f},
+        {1.0f, 1.0f, 0.0f},
+        {2.0f, 0.0f, 0.0f}
     };
-	uint32_t segmentColor = WHITE;
+	uint32_t bezierColor = WHITE;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -166,34 +200,24 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::DragFloat3("Camera Rotate", &cameraRotate.x, 0.01f);
 		}
 
-		if (ImGui::CollapsingHeader("AABB1")) {
-			ImGui::DragFloat3("AABB1.min", &aabb1.min.x, 0.01f);
-			ImGui::DragFloat3("AABB1.max", &aabb1.max.x, 0.01f);
-		}
 
-		if (ImGui::CollapsingHeader("Segment")) {
-			ImGui::DragFloat3("Segment Origin", &segment.origin.x, 0.01f);
-			ImGui::DragFloat3("Segment Diff", &segment.diff.x, 0.01f);
+		if (ImGui::CollapsingHeader("Bezier Control Points")) {
+			ImGui::DragFloat3("ControlPoint 0", &controlPoints[0].x, 0.01f);
+			ImGui::DragFloat3("ControlPoint 1", &controlPoints[1].x, 0.01f);
+			ImGui::DragFloat3("ControlPoint 2", &controlPoints[2].x, 0.01f);
 		}
 
 		ImGui::End();
-
-		if (IsCollision(aabb1, segment)) {
-			aabb1Color = RED;
-			segmentColor = RED;
-		} else {
-			aabb1Color = WHITE;
-			segmentColor = WHITE;
-		}
-
 		Matrix4x4 cameraMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, cameraRotate, cameraTranslate);
 		Matrix4x4 viewMatrix = Inverse(cameraMatrix);
 		Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, 1280.0f / 720.0f, 0.1f, 100.0f);
 		Matrix4x4 viewProjectionMatrix = Multiply(viewMatrix, projectionMatrix);
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f);
 
-		Vector3 start = Transform(Transform(segment.origin, viewProjectionMatrix), viewportMatrix);
-		Vector3 end = Transform(Transform(Add(segment.origin, segment.diff), viewProjectionMatrix), viewportMatrix);
+		Vector3 screenControlPoints[3];
+		for (int i = 0; i < 3; ++i) {
+			screenControlPoints[i] = Transform(Transform(controlPoints[i], viewProjectionMatrix), viewportMatrix);
+		}
 
 		///
 		/// ↑更新処理ここまで
@@ -203,9 +227,11 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		/// ↓描画処理ここから
 		///
 
+		DrawBezier(controlPoints[0], controlPoints[1], controlPoints[2], viewProjectionMatrix, viewportMatrix, bezierColor);
+		for (int i = 0; i < 3; ++i) {
+			Novice::DrawEllipse(int(screenControlPoints[i].x), int(screenControlPoints[i].y), 8, 8, 0.0f, BLACK, kFillModeSolid);
+		}
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
-		DrawAABB(aabb1, viewProjectionMatrix, viewportMatrix, aabb1Color);
-		Novice::DrawLine(int(start.x), int(start.y), int(end.x), int(end.y), segmentColor);
 
 		///
 		/// ↑描画処理ここまで
