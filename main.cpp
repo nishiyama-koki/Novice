@@ -164,6 +164,41 @@ void DrawBezier(const Vector3& controlPoint0, const Vector3& controlPoint1, cons
 	}
 }
 
+Vector3 operator+(const Vector3& v1, const Vector3& v2) { return {v1.x + v2.x, v1.y + v2.y, v1.z + v2.z}; }
+Vector3 operator-(const Vector3& v1, const Vector3& v2) { return {v1.x - v2.x, v1.y - v2.y, v1.z - v2.z}; }
+Vector3 operator*(const Vector3& v, float scalar) { return {v.x * scalar, v.y * scalar, v.z * scalar}; }
+Vector3 operator*(float scalar, const Vector3& v) { return v * scalar; }
+Vector3 operator/(const Vector3& v, float scalar) { return {v.x / scalar, v.y / scalar, v.z / scalar}; }
+Matrix4x4 operator+(const Matrix4x4& m1, const Matrix4x4& m2) {
+	Matrix4x4 result;
+	for (int row = 0; row < 4; ++row) {
+		for (int col = 0; col < 4; ++col) {
+			result.m[row][col] = m1.m[row][col] + m2.m[row][col];
+		}
+	}
+	return result;
+}
+Matrix4x4 operator-(const Matrix4x4& m1, const Matrix4x4& m2) {
+	Matrix4x4 result;
+	for (int row = 0; row < 4; ++row) {
+		for (int col = 0; col < 4; ++col) {
+			result.m[row][col] = m1.m[row][col] - m2.m[row][col];
+		}
+	}
+	return result;
+}
+Matrix4x4 operator*(const Matrix4x4& m1, const Matrix4x4& m2) {
+	Matrix4x4 result = {};
+	for (int row = 0; row < 4; ++row) {
+		for (int col = 0; col < 4; ++col) {
+			for (int k = 0; k < 4; ++k) {
+				result.m[row][col] += m1.m[row][k] * m2.m[k][col];
+			}
+		}
+	}
+	return result;
+}
+
 // Windowsアプリでのエントリーポイント(main関数)
 int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	// ライブラリの初期化
@@ -174,12 +209,16 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 	Vector3 cameraTranslate{0.0f, 1.9f, -6.49f};
 	Vector3 cameraRotate{0.26f, 0.0f, 0.0f};
 
-	Vector3 shoulderTranslate{0.0f, 1.0f, 0.0f};
-	Vector3 shoulderRotate{0.0f, 0.0f, 0.0f};
-	Vector3 elbowTranslate{0.0f, -1.0f, 0.0f};
-	Vector3 elbowRotate{0.0f, 0.0f, 0.0f};
-	Vector3 handTranslate{0.0f, -1.0f, 0.0f};
-	Vector3 handRotate{0.0f, 0.0f, 0.0f};
+	Vector3 a{0.2f, 1.0f, 0.0f};
+	Vector3 b{2.4f, 3.1f, 1.2f};
+	Vector3 c = a + b;
+	Vector3 d = a - b;
+	Vector3 e = a * 2.4f;
+	Vector3 rotate{0.4f, 1.43f, -0.8f};
+	Matrix4x4 rotateXMatrix = MakeRotateXMatrix(rotate.x);
+	Matrix4x4 rotateYMatrix = MakeRotateYMatrix(rotate.y);
+	Matrix4x4 rotateZMatrix = MakeRotateZMatrix(rotate.z);
+	Matrix4x4 rotateMatrix = rotateXMatrix * rotateYMatrix * rotateZMatrix;
 
 	// ウィンドウの×ボタンが押されるまでループ
 	while (Novice::ProcessMessage() == 0) {
@@ -201,20 +240,16 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 			ImGui::DragFloat3("Camera Rotate", &cameraRotate.x, 0.01f);
 		}
 
-		if (ImGui::CollapsingHeader("Shoulder (Parent)")) {
-			ImGui::DragFloat3("Shoulder Translate", &shoulderTranslate.x, 0.01f);
-			ImGui::DragFloat3("Shoulder Rotate", &shoulderRotate.x, 0.01f);
-		}
-
-		if (ImGui::CollapsingHeader("Elbow (Child)")) {
-			ImGui::DragFloat3("Elbow Translate", &elbowTranslate.x, 0.01f);
-			ImGui::DragFloat3("Elbow Rotate", &elbowRotate.x, 0.01f);
-		}
-
-		if (ImGui::CollapsingHeader("Hand (Grandchild)")) {
-			ImGui::DragFloat3("Hand Translate", &handTranslate.x, 0.01f);
-			ImGui::DragFloat3("Hand Rotate", &handRotate.x, 0.01f);
-		}
+		ImGui::Text("c:%f,%f, %f", c.x, c.y, c.z);
+		ImGui::Text("d:%f,%f, %f", d.x, d.y, d.z);
+		ImGui::Text("e:%f,%f, %f", e.x, e.y, e.z);
+		ImGui::Text("matrix:\n%f,%f, %f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f\n%f,%f,%f,%f",
+			rotateMatrix.m[0][0], rotateMatrix.m[0][1], rotateMatrix.m[0][2],
+			rotateMatrix.m[0][3], rotateMatrix.m[1][0], rotateMatrix.m[1][1],
+			rotateMatrix.m[1][2], rotateMatrix.m[1][3], rotateMatrix.m[2][0],
+			rotateMatrix.m[2][1], rotateMatrix.m[2][2], rotateMatrix.m[2][3],
+			rotateMatrix.m[3][0], rotateMatrix.m[3][1], rotateMatrix.m[3][2],
+			rotateMatrix.m[3][3]);
 
 		ImGui::End();
 		Matrix4x4 cameraMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, cameraRotate, cameraTranslate);
@@ -222,17 +257,7 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 		Matrix4x4 projectionMatrix = MakePerspectiveFovMatrix(0.45f, 1280.0f / 720.0f, 0.1f, 100.0f);
 		Matrix4x4 viewProjectionMatrix = Multiply(viewMatrix, projectionMatrix);
 		Matrix4x4 viewportMatrix = MakeViewportMatrix(0.0f, 0.0f, 1280.0f, 720.0f, 0.0f, 1.0f);
-		Matrix4x4 shoulderWorldMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, shoulderRotate, shoulderTranslate);
-		Matrix4x4 elbowLocalMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, elbowRotate, elbowTranslate);
-		Matrix4x4 elbowWorldMatrix = Multiply(elbowLocalMatrix, shoulderWorldMatrix);
-		Matrix4x4 handLocalMatrix = MakeAffineMatrix({1.0f, 1.0f, 1.0f}, handRotate, handTranslate);
-		Matrix4x4 handWorldMatrix = Multiply(handLocalMatrix, elbowWorldMatrix);
-		Vector3 shoulderPos = {shoulderWorldMatrix.m[3][0], shoulderWorldMatrix.m[3][1], shoulderWorldMatrix.m[3][2]};
-		Vector3 elbowPos = {elbowWorldMatrix.m[3][0], elbowWorldMatrix.m[3][1], elbowWorldMatrix.m[3][2]};
-		Vector3 handPos = {handWorldMatrix.m[3][0], handWorldMatrix.m[3][1], handWorldMatrix.m[3][2]};
-		Vector3 screenShoulder = Transform(Transform(shoulderPos, viewProjectionMatrix), viewportMatrix);
-		Vector3 screenElbow = Transform(Transform(elbowPos, viewProjectionMatrix), viewportMatrix);
-		Vector3 screenHand = Transform(Transform(handPos, viewProjectionMatrix), viewportMatrix);
+
 
 		///
 		/// ↑更新処理ここまで
@@ -244,12 +269,6 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 
 		DrawGrid(viewProjectionMatrix, viewportMatrix);
 
-
-		Novice::DrawLine(int(screenShoulder.x), int(screenShoulder.y), int(screenElbow.x), int(screenElbow.y), WHITE);
-		Novice::DrawLine(int(screenElbow.x), int(screenElbow.y), int(screenHand.x), int(screenHand.y), WHITE);
-		Novice::DrawEllipse(int(screenShoulder.x), int(screenShoulder.y), 12, 12, 0.0f, RED, kFillModeSolid);
-		Novice::DrawEllipse(int(screenElbow.x), int(screenElbow.y), 10, 10, 0.0f, GREEN, kFillModeSolid);
-		Novice::DrawEllipse(int(screenHand.x), int(screenHand.y), 8, 8, 0.0f, BLUE, kFillModeSolid);
 
 		///
 		/// ↑描画処理ここまで
